@@ -179,3 +179,141 @@ resource "aws_security_group" "myapp-sg" {
 ---
 
 <img src="https://i.imgur.com/DrBoVsp.png" height="80%" width="80%" alt="Disk Sanitization Steps"/>
+
+
+## 7. Amazon Machine Image for EC2
+
+- Add the following code to your main.tf file:
+
+```hcl
+data "aws_ami" "latest-amazon-linux-image" {
+  most_recent = true
+  owners = ["amazon"]
+  filter {
+    name = "name"
+    values = ["amzn2-ami-kernel-*-x86_64-gp2"]
+  }
+  filter {
+    name = "virtualization-type"
+    values = ["hvm"]
+  }
+}
+
+output "aws_ami_id" {
+  value = data.aws_ami.latest-amazon-linux-image.id
+}
+```
+
+Then apply the changes:
+
+```
+terraform apply -auto-approve
+```
+
+<img src="https://i.imgur.com/PmernQ7.png" height="80%" width="80%" alt="Disk Sanitization Steps"/>
+
+---
+
+<img src="https://i.imgur.com/8LCorA0.png" height="80%" width="80%" alt="Disk Sanitization Steps"/>
+
+
+## 8. Create EC2 Instance
+
+Generate the key pair server-key-pair.pem and move it to ~/.ssh/. Change its permissions with:
+
+```bash
+chmod 400 ~/.ssh/server-key-pair.pem
+```
+
+Edit your main.tf file with the following content:
+
+```hcl
+resource "aws_instance" "myapp-server" {
+  ami                         = data.aws_ami.latest-amazon-linux-image.id
+  instance_type               = var.instance_type
+  subnet_id                   = aws_subnet.myapp_subnet_1.id
+  vpc_security_group_ids      = [aws_default_security_group.default-sg.id]
+  availability_zone           = var.avail_zone
+  associate_public_ip_address = true
+  key_name                    = "server-key-pair"
+
+  tags = {
+    Name = "${var.env_prefix}-server"
+  }
+}
+```
+
+Apply the configuration using:
+
+```bash
+
+terraform apply -auto-approve
+```
+
+**SSH into the EC2 instance with:**
+
+```bash
+
+ssh -i ~/.ssh/server-key-pair.pem ec2-user@<public_ip_address>
+```
+
+**- Automate SSH Key Pair**
+
+To automate SSH key pair generation, add the following code to your main.tf file:
+
+```hcl
+
+resource "aws_key_pair" "ssh-key" {
+  key_name   = "server-key"
+  public_key = file(var.public_key_location)
+}
+
+resource "aws_instance" "myapp-server" {
+  ami                         = data.aws_ami.latest-amazon-linux-image.id
+  instance_type               = var.instance_type
+  subnet_id                   = aws_subnet.myapp_subnet_1.id
+  vpc_security_group_ids      = [aws_default_security_group.default-sg.id]
+  availability_zone           = var.avail_zone
+  associate_public_ip_address = true
+  key_name                    = aws_key_pair.ssh-key.key_name
+
+  tags = {
+    Name = "${var.env_prefix}-server"
+  }
+}
+```
+
+- Apply the changes:
+
+```bash
+
+terraform apply -auto-approve
+```
+
+- Get the public IP address of the instance:
+
+```bash
+
+terraform state show aws_instance.myapp-server.public_ip
+```
+
+- SSH into the instance:
+
+```bash
+
+%ssh -i ~/.ssh/id_ed25519 ec2-user@<public_ip_address>
+```
+
+**Then, remove the temporary key pair:**
+
+```bash
+rm ~/.ssh/server-key-pair.pem
+```
+
+
+<img src="https://i.imgur.com/8rCPzz7.png" height="80%" width="80%" alt="Disk Sanitization Steps"/>
+
+---
+
+<img src="https://i.imgur.com/sSXBYcQ.png" height="80%" width="80%" alt="Disk Sanitization Steps"/>
+
