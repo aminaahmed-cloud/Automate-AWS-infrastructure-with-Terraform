@@ -317,3 +317,71 @@ rm ~/.ssh/server-key-pair.pem
 
 <img src="https://i.imgur.com/sSXBYcQ.png" height="80%" width="80%" alt="Disk Sanitization Steps"/>
 
+
+## 9. Run entrypoint script to start Docker container
+
+Edit your main.tf file with the following content:
+
+```hcl
+user_data = <<EOF
+#!/bin/bash
+sudo yum update -y && sudo yum install -y docker
+sudo systemctl start docker
+sudo usermod -aG docker ec2-user
+docker run -p 80880:80 nginx
+EOF
+
+user_data_replace_on_change = true
+```
+
+### - Extract to shell script
+
+remove from main.tf 
+
+```hcl
+user_data = <<EOF
+#!/bin/bash
+sudo yum update -y && sudo yum install -y docker
+sudo systemctl start docker
+sudo usermod -aG docker ec2-user
+docker run -p 80880:80 nginx
+EOF
+
+user_data_replace_on_change = true
+```
+
+**- Replace**
+
+```
+user_data = file("entry-script.sh")
+
+user_data_replace_on_change = true
+```
+
+### - Create Shell file entry-script.sh
+
+```bash
+#!/bin/bash
+sudo yum update -y && sudo yum install -y docker
+sudo systemctl start docker
+sudo usermod -aG docker ec2-user
+docker run -p 80880:80 nginx
+```
+
+<img src="https://i.imgur.com/HsxQPJ2.png" height="80%" width="80%" alt="Disk Sanitization Steps"/>
+
+
+---
+
+<img src="https://i.imgur.com/2yjLvLL.png" height="80%" width="80%" alt="Disk Sanitization Steps"/>
+
+
+### - Commit to own feature branch
+
+```bash
+git checkout -b feature/deploy-to-ec2-default-components
+git add .
+git commit -m "add ec2 deployment config"
+git push --set-upstream origin feature/deploy-to-ec2-default-components
+```
+
